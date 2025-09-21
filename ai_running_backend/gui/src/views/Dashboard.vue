@@ -1,11 +1,15 @@
 <template>
   <div class="dashboard">
-    <div class="dashboard-header">
+    <div class="user-info">
       <h1>Панель управления</h1>
-      <button @click="logout" class="btn btn-secondary">Выйти</button>
+      <div class="user-details" v-if="user">
+        <span v-if="isTelegramUser" class="user-type telegram">Telegram пользователь</span>
+        <span v-else-if="isDemoUser" class="user-type demo">Демо режим</span>
+        <span v-else class="user-type api">API пользователь</span>
+      </div>
     </div>
     
-    <div class="stats-overview glass-effect">
+    <div class="stats-overview glass-panel">
       <h2>Обзор тренировок</h2>
       <div class="stats-grid">
         <div class="stat-card">
@@ -30,22 +34,22 @@
     <div class="quick-actions">
       <h2>Быстрые действия</h2>
       <div class="actions-grid">
-        <router-link to="/workout" class="action-card glass-effect">
+        <div class="action-card glass-panel" @click="$router.push('/workout')">
           <h3>Начать тренировку</h3>
           <p>Запустить новую тренировку с мониторингом в реальном времени</p>
-        </router-link>
-        <router-link to="/assessment" class="action-card glass-effect">
+        </div>
+        <div class="action-card glass-panel" @click="$router.push('/assessment')">
           <h3>Оценочная тренировка</h3>
           <p>Определить персональные зоны интенсивности</p>
-        </router-link>
-        <router-link to="/profile" class="action-card glass-effect">
+        </div>
+        <div class="action-card glass-panel" @click="$router.push('/profile')">
           <h3>Профиль</h3>
           <p>Настроить параметры пользователя и цели</p>
-        </router-link>
-        <router-link to="/nutrition" class="action-card glass-effect">
+        </div>
+        <div class="action-card glass-panel" @click="$router.push('/nutrition')">
           <h3>Питание</h3>
           <p>Получить персональные рекомендации по питанию</p>
-        </router-link>
+        </div>
       </div>
     </div>
     
@@ -55,7 +59,7 @@
         <div 
           v-for="workout in recentWorkouts" 
           :key="workout.id" 
-          class="workout-item glass-effect"
+          class="workout-item glass-panel"
         >
           <div class="workout-date">{{ formatDate(workout.date) }}</div>
           <div class="workout-details">
@@ -108,7 +112,7 @@ export default {
     }
   },
   computed: {
-    ...mapGetters(['isAuthenticated'])
+    ...mapGetters(['isAuthenticated', 'isDemoUser', 'isTelegramUser', 'user'])
   },
   methods: {
     ...mapActions(['logout']),
@@ -129,15 +133,36 @@ export default {
   padding: 20px;
 }
 
-.dashboard-header {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
+.user-info {
   margin-bottom: 30px;
 }
 
-.dashboard-header h1 {
-  margin-bottom: 0;
+.user-info h1 {
+  margin-bottom: 10px;
+}
+
+.user-details {
+  display: flex;
+  gap: 10px;
+}
+
+.user-type {
+  padding: 5px 10px;
+  border-radius: 15px;
+  font-size: 0.8rem;
+  font-weight: bold;
+}
+
+.user-type.telegram {
+  background: linear-gradient(45deg, #0088cc, #00aaff);
+}
+
+.user-type.demo {
+  background: linear-gradient(45deg, #ff6b6b, #ff8e8e);
+}
+
+.user-type.api {
+  background: linear-gradient(45deg, #00BFFF, #FF1493);
 }
 
 .stats-overview {
@@ -182,9 +207,9 @@ export default {
 
 .action-card {
   padding: 25px;
-  text-decoration: none;
   transition: transform 0.3s ease;
   color: white;
+  cursor: pointer;
 }
 
 .action-card:hover {
@@ -228,11 +253,6 @@ export default {
 }
 
 @media (max-width: 768px) {
-  .dashboard-header {
-    flex-direction: column;
-    gap: 20px;
-  }
-  
   .actions-grid {
     grid-template-columns: 1fr;
   }

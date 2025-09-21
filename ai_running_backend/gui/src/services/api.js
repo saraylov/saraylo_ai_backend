@@ -30,6 +30,7 @@ apiClient.interceptors.response.use(
     if (error.response && error.response.status === 401) {
       // Если токен недействителен, удаляем его и перенаправляем на страницу входа
       localStorage.removeItem('access_token')
+      localStorage.removeItem('api_key')
       window.location.href = '/login'
     }
     return Promise.reject(error)
@@ -42,9 +43,16 @@ export default {
     return apiClient.post('/v1/auth/login', { api_key: apiKey })
   },
   
+  // Аутентификация через Telegram
+  telegramLogin(telegramData) {
+    return apiClient.post('/auth/telegram', telegramData)
+  },
+  
   // Управление сессиями тренировок
   startWorkoutSession(userData) {
-    return apiClient.post('/v1/workout/start', userData)
+    // Получаем API ключ из localStorage или используем переданный
+    const apiKey = localStorage.getItem('api_key') || userData.api_key
+    return apiClient.post('/v1/workout/start', { ...userData, api_key: apiKey })
   },
   
   updateWorkoutSession(workoutData) {
@@ -99,6 +107,21 @@ export default {
   saveCalibrationData(calibrationData) {
     // В реальной системе это будет POST запрос к API
     return Promise.resolve({ data: { status: 'success' } })
+  },
+  
+  // Добавляем функцию для отправки элементов данных
+  sendElement(elementData) {
+    return apiClient.post('/v1/elements/send', elementData)
+  },
+  
+  // Функция для получения элементов данных (если потребуется)
+  getElements() {
+    return apiClient.get('/v1/elements')
+  },
+  
+  // Функция для получения конкретного элемента по ID
+  getElementById(elementId) {
+    return apiClient.get(`/v1/elements/${elementId}`)
   },
   
   // Система питания

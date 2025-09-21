@@ -7,6 +7,11 @@
       </div>
 
       <div class="profile-content">
+        <!-- User Profile Card -->
+        <div class="card glass-effect">
+          <UserProfile />
+        </div>
+        
         <!-- User Info Card -->
         <div class="card glass-effect">
           <h2>Персональная информация</h2>
@@ -128,12 +133,16 @@
 </template>
 
 <script>
+import UserProfile from '../components/UserProfile.vue'
 import api from '../services/api.js'
 import { useStore } from 'vuex'
 import { computed, onMounted, reactive, ref } from 'vue'
 
 export default {
   name: 'Profile',
+  components: {
+    UserProfile
+  },
   setup() {
     const store = useStore()
     const isEditing = ref(false)

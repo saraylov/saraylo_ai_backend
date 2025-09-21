@@ -1,12 +1,14 @@
 import { createRouter, createWebHistory } from 'vue-router'
 import Home from '../views/Home.vue'
 import Login from '../views/Login.vue'
+import TelegramAuth from '../views/TelegramAuth.vue'
 import Dashboard from '../views/Dashboard.vue'
 import Workout from '../views/Workout.vue'
 import Assessment from '../views/Assessment.vue'
 import Profile from '../views/Profile.vue'
 import Nutrition from '../views/Nutrition.vue'
 import AudioSettings from '../views/AudioSettings.vue'
+import Devices from '../views/Devices.vue'
 
 const routes = [
   {
@@ -18,6 +20,11 @@ const routes = [
     path: '/login',
     name: 'Login',
     component: Login
+  },
+  {
+    path: '/telegram-auth',
+    name: 'TelegramAuth',
+    component: TelegramAuth
   },
   {
     path: '/dashboard',
@@ -54,6 +61,12 @@ const routes = [
     name: 'AudioSettings',
     component: AudioSettings,
     meta: { requiresAuth: true }
+  },
+  {
+    path: '/devices',
+    name: 'Devices',
+    component: Devices,
+    meta: { requiresAuth: true }
   }
 ]
 
@@ -68,10 +81,9 @@ router.beforeEach((to, from, next) => {
   
   if (to.meta.requiresAuth && !isAuthenticated) {
     next('/login')
-  } else if (to.path === '/login' && isAuthenticated) {
-    // If user is already authenticated and tries to go to login, redirect to dashboard
-    next('/dashboard')
   } else {
+    // Remove the redirect for authenticated users trying to access login pages
+    // This allows users to see the login page even if they're already authenticated
     next()
   }
 })

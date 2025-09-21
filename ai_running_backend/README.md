@@ -82,6 +82,37 @@ docker-compose up -d
 
 5. Доступ к Kibana: `http://localhost:5601`
 
+## Авторизация через Telegram
+
+Для использования авторизации через Telegram необходимо:
+
+1. Создать Telegram бота через [@BotFather](https://t.me/BotFather)
+2. Получить Telegram Bot Token
+3. Настроить домен приложения в настройках бота
+4. Использовать виджет авторизации Telegram в веб-приложении
+
+### Настройка Telegram бота
+
+1. Откройте [@BotFather](https://t.me/BotFather) в Telegram
+2. Создайте нового бота с помощью команды `/newbot`
+3. Следуйте инструкциям для получения Bot Token
+4. Установите домен для авторизации с помощью команды `/setdomain`
+5. Введите домен вашего приложения: `https://07964add0b7e.ngrok-free.app/`
+
+### Использование в веб-приложении
+
+В веб-приложении используется виджет авторизации Telegram:
+
+```html
+<script async src="https://telegram.org/js/telegram-widget.js?22" 
+        data-telegram-login="Saraylov_bot" 
+        data-size="large" 
+        data-radius="20" 
+        data-auth-url="https://07964add0b7e.ngrok-free.app/auth/telegram"
+        data-request-access="write">
+</script>
+```
+
 ## Тестирование
 
 Для запуска всех тестов выполните:
@@ -106,7 +137,8 @@ python run_tests.py
 
 Основные конечные точки API:
 
-- `POST /v1/auth/login` - Аутентификация
+- `POST /v1/auth/login` - Аутентификация по API ключу
+- `POST /auth/telegram` - Авторизация через Telegram
 - `POST /v1/workout/start` - Начало сессии тренировки
 - `POST /v1/workout/update` - Обновление данных тренировки
 - `POST /v1/workout/end` - Завершение сессии тренировки

@@ -1,267 +1,87 @@
 <template>
-  <div class="home">
-    <div class="hero-section glass-effect">
-      <h1>SARAYLO - Квантовый Беговой Тренер</h1>
-      <p>Интеллектуальная система тренировок на основе нейронной сети</p>
-      <div class="cta-buttons">
-        <router-link to="/login" class="btn btn-primary" v-if="!isAuthenticated">
-          Начать тренировку
-        </router-link>
-        <router-link to="/dashboard" class="btn btn-primary" v-else>
-          Перейти к тренировкам
-        </router-link>
-      </div>
-    </div>
-
-    <div class="features-section">
-      <h2>Основные возможности</h2>
-      <div class="features-grid">
-        <div class="feature-card glass-effect">
-          <div class="feature-icon">🏃</div>
-          <h3>Адаптивные тренировки</h3>
-          <p>Нейросеть анализирует ваше физиологическое состояние в реальном времени и адаптирует тренировку под ваши потребности.</p>
-        </div>
-        <div class="feature-card glass-effect">
-          <div class="feature-icon">🎯</div>
-          <h3>Персональные рекомендации</h3>
-          <p>Получайте индивидуальные рекомендации по интенсивности, темпу и восстановлению на основе ваших биометрических данных.</p>
-        </div>
-        <div class="feature-card glass-effect">
-          <div class="feature-icon">📊</div>
-          <h3>Интеллектуальный мониторинг</h3>
-          <p>Система отслеживает уровень усталости, восстановление и эффективность тренировки для оптимизации результатов.</p>
-        </div>
-        <div class="feature-card glass-effect">
-          <div class="feature-icon">🔊</div>
-          <h3>Аудио-взаимодействие</h3>
-          <p>Уточняйте цели и получайте мотивацию через голосовое взаимодействие с ИИ-тренером.</p>
-        </div>
-        <div class="feature-card glass-effect">
-          <div class="feature-icon">🍎</div>
-          <h3>Питание и восстановление</h3>
-          <p>Персональные рекомендации по питанию и восстановлению на основе данных тренировок и целей.</p>
-        </div>
-        <div class="feature-card glass-effect">
-          <div class="feature-icon">📈</div>
-          <h3>Прогресс и аналитика</h3>
-          <p>Подробная аналитика прогресса с прогнозами и достижениями для мотивации.</p>
-        </div>
-      </div>
-    </div>
-
-    <div class="how-it-works">
-      <h2>Как это работает</h2>
-      <div class="steps">
-        <div class="step">
-          <div class="step-number">1</div>
-          <h3>Калибровка</h3>
-          <p>Пройдите оценочную тренировку для определения ваших персональных зон интенсивности.</p>
-        </div>
-        <div class="step">
-          <div class="step-number">2</div>
-          <h3>Тренировка</h3>
-          <p>Носите устройство с датчиками ЧСС и GPS во время тренировки.</p>
-        </div>
-        <div class="step">
-          <div class="step-number">3</div>
-          <h3>Анализ</h3>
-          <p>Нейросеть анализирует данные и предоставляет персональные рекомендации.</p>
-        </div>
-        <div class="step">
-          <div class="step-number">4</div>
-          <h3>Оптимизация</h3>
-          <p>Следующая тренировка адаптируется на основе полученных данных.</p>
-        </div>
+  <div class="dashboard-screen">
+    <div class="auth-options">
+      <div class="auth-buttons">
+        <button class="auth-button telegram-auth-button" @click="$router.push('/telegram-auth')">
+          Войти через Telegram
+        </button>
+        <button class="auth-button demo-auth-button" @click="demoLogin">
+          Демо-режим
+        </button>
       </div>
     </div>
   </div>
 </template>
 
 <script>
-import { mapGetters } from 'vuex'
+import { mapGetters, mapActions } from 'vuex'
 
 export default {
   name: 'Home',
   computed: {
     ...mapGetters(['isAuthenticated'])
+  },
+  methods: {
+    ...mapActions(['login']),
+    demoLogin() {
+      // Демо вход без проверки API ключа
+      localStorage.setItem('access_token', 'demo_token')
+      this.login({ 
+        id: 'demo_user', 
+        isDemo: true,
+        isAuthenticated: true
+      })
+      this.$router.push('/dashboard')
+    }
   }
 }
 </script>
 
 <style scoped>
-.home {
+.dashboard-screen {
+  display: flex;
+  flex-direction: column;
+  gap: 20px;
   padding: 20px;
-  max-width: 1200px;
+}
+
+.auth-buttons {
+  display: flex;
+  flex-direction: column;
+  gap: 15px;
+  max-width: 300px;
   margin: 0 auto;
 }
 
-.hero-section {
-  text-align: center;
-  padding: 60px 20px;
-  margin-bottom: 40px;
-}
-
-.hero-section h1 {
-  font-size: 2.5rem;
-  margin-bottom: 20px;
-  background: linear-gradient(45deg, #00BFFF, #FF1493);
-  -webkit-background-clip: text;
-  -webkit-text-fill-color: transparent;
-}
-
-.hero-section p {
-  font-size: 1.2rem;
-  margin-bottom: 30px;
-  opacity: 0.9;
-  max-width: 600px;
-  margin-left: auto;
-  margin-right: auto;
-}
-
-.cta-buttons {
-  margin-top: 30px;
-}
-
-.btn-primary {
-  font-size: 1.1rem;
-  padding: 15px 30px;
-}
-
-.features-section {
-  margin-bottom: 50px;
-}
-
-.features-section h2 {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.features-grid {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-  gap: 25px;
-  margin-top: 30px;
-}
-
-.feature-card {
-  padding: 25px;
-  text-align: center;
-  transition: transform 0.3s ease;
-}
-
-.feature-card:hover {
-  transform: translateY(-5px);
-}
-
-.feature-icon {
-  font-size: 2.5rem;
-  margin-bottom: 15px;
-}
-
-.feature-card h3 {
-  margin-bottom: 15px;
-  color: #00BFFF;
-}
-
-.how-it-works {
-  margin-bottom: 50px;
-}
-
-.how-it-works h2 {
-  text-align: center;
-  margin-bottom: 30px;
-}
-
-.steps {
-  display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-  gap: 30px;
-  margin-top: 30px;
-}
-
-.step {
-  text-align: center;
-}
-
-.step-number {
-  width: 50px;
-  height: 50px;
-  background: linear-gradient(45deg, #00BFFF, #FF1493);
-  border-radius: 50%;
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 1.5rem;
+.auth-button {
+  padding: 15px;
+  border: none;
+  border-radius: 10px;
+  font-size: 16px;
   font-weight: bold;
-  margin: 0 auto 20px;
+  cursor: pointer;
+  transition: all 0.3s ease;
+  text-align: center;
+}
+
+.telegram-auth-button {
+  background: linear-gradient(45deg, #0088cc, #00aaff);
   color: white;
+  box-shadow: 0 4px 15px rgba(0, 136, 204, 0.4);
 }
 
-.step h3 {
-  margin-bottom: 15px;
-  color: #00BFFF;
+.demo-auth-button {
+  background: linear-gradient(45deg, #FF1493, #FF69B4);
+  color: white;
+  box-shadow: 0 4px 15px rgba(255, 20, 147, 0.4);
 }
 
-@media (max-width: 768px) {
-  .home {
-    padding: 15px;
-  }
-  
-  .hero-section {
-    padding: 40px 15px;
-  }
-  
-  .hero-section h1 {
-    font-size: 2rem;
-  }
-  
-  .hero-section p {
-    font-size: 1rem;
-  }
-  
-  .features-grid {
-    grid-template-columns: 1fr;
-  }
-  
-  .steps {
-    grid-template-columns: 1fr;
-  }
-  
-  .feature-card {
-    padding: 20px;
-  }
+.auth-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 6px 20px rgba(0, 0, 0, 0.3);
 }
 
-@media (max-width: 480px) {
-  .home {
-    padding: 10px;
-  }
-  
-  .hero-section h1 {
-    font-size: 1.8rem;
-  }
-  
-  .hero-section p {
-    font-size: 0.9rem;
-  }
-  
-  .btn-primary {
-    font-size: 1rem;
-    padding: 12px 24px;
-  }
-  
-  .features-grid {
-    gap: 15px;
-  }
-  
-  .feature-card {
-    padding: 15px;
-  }
-  
-  .step-number {
-    width: 40px;
-    height: 40px;
-    font-size: 1.2rem;
-  }
+.auth-button:active {
+  transform: translateY(0);
 }
 </style>

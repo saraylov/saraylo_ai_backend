@@ -1,12 +1,60 @@
 <template>
   <div id="app">
-    <router-view />
+    <!-- Splash Screen -->
+    <SplashScreen @splash-finished="onSplashFinished" v-if="showSplash" />
+    
+    <!-- Main Content (only shown after splash screen finishes) -->
+    <template v-else>
+      <!-- Header Panel -->
+      <header class="header-panel glass-panel" v-if="shouldShowHeader">
+        <div class="header-content">
+          <h1 class="header-title">SARAYLO</h1>
+        </div>
+      </header>
+      
+      <!-- Main Content -->
+      <main class="main-content">
+        <router-view />
+      </main>
+    </template>
+    
+    <!-- Removed Bottom Navigation -->
   </div>
 </template>
 
 <script>
+import SplashScreen from './components/SplashScreen.vue'
+
 export default {
-  name: 'App'
+  name: 'App',
+  components: {
+    SplashScreen
+  },
+  data() {
+    return {
+      showSplash: true // Always show splash screen initially
+    }
+  },
+  computed: {
+    shouldShowHeader() {
+      const routeName = this.$route.name;
+      return routeName !== 'Login' && routeName !== 'TelegramAuth' && routeName !== 'Home';
+    }
+  },
+  methods: {
+    onSplashFinished() {
+      this.showSplash = false;
+      // Navigate to login page after splash screen
+      // Always go to login page regardless of authentication status
+      this.$router.push('/login');
+    }
+  },
+  mounted() {
+    // If we're already on a route other than home, don't show splash screen
+    if (this.$route.path !== '/') {
+      this.showSplash = false;
+    }
+  }
 }
 </script>
 
@@ -23,16 +71,57 @@ body {
   background: linear-gradient(135deg, #000033, #33001a);
   color: #fff;
   min-height: 100vh;
+  padding-bottom: 20px; /* Reduced padding since bottom nav is removed */
 }
 
 /* Glassmorphism effect */
-.glass-effect {
+.glass-panel {
   background: rgba(255, 255, 255, 0.1);
   backdrop-filter: blur(10px);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 15px;
   box-shadow: 0 8px 32px 0 rgba(0, 191, 255, 0.1);
 }
+
+/* Header Panel */
+.header-panel {
+  width: 551px; /* Фиксированная ширина */
+  height: 60px;
+  background: rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(10px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+  border-radius: 15px;
+  box-shadow: 0 8px 32px 0 rgba(0, 191, 255, 0.1);
+  margin: 20px auto;
+  position: relative;
+}
+
+.header-content {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  height: 100%;
+}
+
+.header-title {
+  color: #00BFFF;
+  font-size: 24px;
+  font-weight: bold;
+  text-align: center;
+  margin: 0;
+  text-shadow: 0 0 10px rgba(0, 191, 255, 0.5);
+}
+
+/* Main Content */
+.main-content {
+  width: 100%;
+  max-width: 551px;
+  margin: 0 auto;
+  padding: 20px;
+  box-sizing: border-box;
+}
+
+/* Removed Bottom Navigation styles */
 
 /* Button styles */
 .btn {
@@ -117,6 +206,13 @@ p {
   .card {
     padding: 15px;
   }
+  
+  .header-panel,
+  .main-content {
+    width: 95%;
+    margin-left: auto;
+    margin-right: auto;
+  }
 }
 
 @media (max-width: 480px) {
@@ -152,13 +248,17 @@ p {
   .checkbox-group {
     grid-template-columns: 1fr;
   }
-  
+
   .form-actions {
     flex-direction: column;
   }
+  
+  .header-panel,
+  .main-content {
+    width: 100%;
+  }
 }
 
-/* Large screens */
 @media (min-width: 1200px) {
   .container {
     max-width: 1400px;

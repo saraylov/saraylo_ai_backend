@@ -1,202 +1,193 @@
 import os
-import sys
-from flask import Flask, request, jsonify
-from flask_jwt_extended import JWTManager, jwt_required, create_access_token, get_jwt_identity
+import hashlib
+import hmac
 import uuid
 from datetime import datetime, timedelta
-import redis
-import json
+from flask import Flask, request, jsonify, redirect, url_for
+from flask_cors import CORS
+from functools import wraps
+import jwt  # Import jwt directly
 
-# Добавляем путь к корню проекта для импорта модулей
-sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
-
-# Импортируем модели и модули
-from models import PhysiologicalStateModel
-from sessions.session_manager import SessionManager
-
-# Создаем Flask приложение
 app = Flask(__name__)
+app.config['SECRET_KEY'] = 'your-secret-key-change-in-production'
 
-# Конфигурация JWT
-app.config['JWT_SECRET_KEY'] = 'super-secret-key'  # В production использовать безопасный ключ
-app.config['JWT_ACCESS_TOKEN_EXPIRES'] = timedelta(hours=1)
-jwt = JWTManager(app)
+# Включаем CORS для всех маршрутов
+CORS(app, resources={r"/api/*": {"origins": "*"}})
 
-# Инициализируем Redis для управления сессиями
-redis_client = redis.Redis(host='localhost', port=6379, db=0, decode_responses=True)
+# Ваш Telegram Bot Token
+TELEGRAM_BOT_TOKEN = "8133563995:AAHgcsZ7S3vmYWb6XYx3SbcQa1I_ldOV_1E"
 
-# Инициализируем менеджер сессий
-session_manager = SessionManager(redis_client)
+# Хранилище для API ключей (в реальном приложении используйте базу данных)
+api_keys = {}
 
-# Инициализируем модель
-model = PhysiologicalStateModel()
-
-@app.route('/v1/auth/login', methods=['POST'])
-def login():
-    """Аутентификация пользователя"""
-    data = request.get_json()
+def token_required(f):
+    @wraps(f)
+    def decorated(*args, **kwargs):
+        token = request.headers.get('Authorization')
+        
+        if not token:
+            return jsonify({'error': 'Token is missing'}), 401
+        
+        try:
+            # Убираем "Bearer " из токена
+            if token.startswith('Bearer '):
+                token = token[7:]
+            
+            data = jwt.decode(token, app.config['SECRET_KEY'], algorithms=['HS256'])
+        except jwt.ExpiredSignatureError:
+            return jsonify({'error': 'Token has expired'}), 401
+        except jwt.InvalidTokenError:
+            return jsonify({'error': 'Token is invalid'}), 401
+        
+        return f(*args, **kwargs)
     
-    # В реальной системе здесь должна быть проверка api_key
+    return decorated
+
+@app.route('/api/v1/auth/login', methods=['POST'])
+def login():
+    """Аутентификация по API ключу"""
+    data = request.get_json()
     api_key = data.get('api_key')
     
+    # В реальной системе здесь будет проверка API ключа
     if not api_key:
         return jsonify({'error': 'API key is required'}), 400
     
-    # В данном примере принимаем любой ключ (для демонстрации)
-    access_token = create_access_token(identity=api_key)
+    # Генерируем JWT токен
+    token = jwt.encode({
+        'user_id': 'user123',
+        'exp': datetime.utcnow() + timedelta(days=30)
+    }, app.config['SECRET_KEY'], algorithm='HS256')
     
     return jsonify({
-        'access_token': access_token,
+        'access_token': token,
         'token_type': 'Bearer'
     }), 200
 
-@app.route('/v1/workout/start', methods=['POST'])
-@jwt_required()
-def start_workout():
-    """Начало сессии тренировки"""
-    data = request.get_json()
+@app.route('/auth/telegram', methods=['GET', 'POST'])
+def telegram_auth():
+    """Обработка авторизации через Telegram"""
+    if request.method == 'GET':
+        # Перенаправляем POST запросы
+        return redirect(url_for('telegram_auth'), code=307)
     
-    user_id = data.get('user_id')
-    calibration_data = data.get('calibration_data')
-    user_profile = data.get('user_profile')
+    # Получаем данные от Telegram
+    telegram_data = request.form.to_dict()
     
-    if not user_id or not calibration_data or not user_profile:
-        return jsonify({'error': 'user_id, calibration_data, and user_profile are required'}), 400
+    # Проверяем подлинность данных от Telegram
+    if not verify_telegram_data(telegram_data):
+        return jsonify({'error': 'Invalid Telegram data'}), 400
     
-    # Генерируем уникальный ID сессии
-    session_id = f"workout_{str(uuid.uuid4())[:8]}"
+    # Извлекаем информацию о пользователе
+    user_id = telegram_data.get('id')
+    username = telegram_data.get('username', f'user_{user_id}')
     
-    # Создаем сессию
-    session_data = {
-        'user_id': user_id,
-        'calibration_data': calibration_data,
-        'user_profile': user_profile,
-        'start_time': datetime.utcnow().isoformat(),
-        'status': 'initialized'
+    # Генерируем персональный API ключ для пользователя
+    if user_id not in api_keys:
+        api_key = str(uuid.uuid4())
+        api_keys[user_id] = {
+            'api_key': api_key,
+            'username': username,
+            'created_at': datetime.utcnow().isoformat()
+        }
+    else:
+        api_key = api_keys[user_id]['api_key']
+    
+    # Создаем JWT токен для пользователя
+    user_data = {
+        'id': user_id,
+        'first_name': telegram_data.get('first_name'),
+        'last_name': telegram_data.get('last_name'),
+        'username': username,
+        'photo_url': telegram_data.get('photo_url'),
+        'auth_date': telegram_data.get('auth_date'),
+        'api_key': api_key
     }
     
-    # Сохраняем сессию в Redis
-    session_manager.create_session(session_id, session_data)
+    token = jwt.encode({
+        'user': user_data,
+        'exp': datetime.utcnow() + timedelta(days=30)
+    }, app.config['SECRET_KEY'], algorithm='HS256')
+    
+    # Возвращаем токен и перенаправляем на фронтенд
+    return jsonify({
+        'access_token': token,
+        'user': user_data,
+        'api_key': api_key
+    }), 200
+
+def verify_telegram_data(telegram_data):
+    """Проверка подлинности данных от Telegram"""
+    # Удаляем hash из данных для проверки
+    received_hash = telegram_data.pop('hash', None)
+    
+    if not received_hash:
+        return False
+    
+    # Создаем строку данных для проверки
+    data_check_string = '\n'.join(sorted([f"{k}={v}" for k, v in telegram_data.items() if k != 'hash']))
+    
+    # Создаем секретный ключ
+    secret_key = hashlib.sha256(TELEGRAM_BOT_TOKEN.encode()).digest()
+    
+    # Вычисляем хэш
+    calculated_hash = hmac.new(secret_key, data_check_string.encode(), hashlib.sha256).hexdigest()
+    
+    # Сравниваем хэши
+    return hmac.compare_digest(calculated_hash, received_hash)
+
+@app.route('/api/v1/workout/start', methods=['POST'])
+@token_required
+def start_workout_session():
+    """Начало тренировочной сессии"""
+    data = request.get_json()
+    
+    # В реальной системе здесь будет логика начала тренировки
+    session_id = f"session_{int(datetime.utcnow().timestamp())}"
     
     return jsonify({
+        'status': 'started',
         'session_id': session_id,
-        'status': 'initialized',
+        'start_time': datetime.utcnow().isoformat(),
         'timestamp': datetime.utcnow().isoformat()
     }), 200
 
-@app.route('/v1/workout/update', methods=['POST'])
-@jwt_required()
-def update_workout():
-    """Обновление данных тренировки"""
+@app.route('/api/v1/workout/update', methods=['POST'])
+@token_required
+def update_workout_session():
+    """Обновление данных тренировочной сессии"""
     data = request.get_json()
     
-    session_id = data.get('session_id')
-    
-    if not session_id:
-        return jsonify({'error': 'session_id is required'}), 400
-    
-    # Проверяем существование сессии
-    session_data = session_manager.get_session(session_id)
-    if not session_data:
-        return jsonify({'error': 'Session not found'}), 404
-    
-    # Извлекаем данные
-    timestamp = data.get('timestamp')
-    hr = data.get('hr')
-    hrv = data.get('hrv')
-    speed_mps = data.get('speed_mps')
-    cadence = data.get('cadence')
-    gps = data.get('gps')
-    accelerometer = data.get('accelerometer')
-    
-    # В реальной системе здесь будет обработка данных и вызов модели
-    # Для демонстрации возвращаем фиктивные данные
-    
-    # Формируем входные данные для модели
-    # В реальной системе здесь будет более сложная обработка
-    temporal_data = [hr, hrv, speed_mps, cadence]  # Упрощенный пример
-    static_data = [
-        session_data['user_profile'].get('age', 30),
-        1 if session_data['user_profile'].get('gender', 'male') == 'male' else 0,
-        session_data['user_profile'].get('weight_kg', 70),
-        session_data['user_profile'].get('height_cm', 175),
-        session_data['user_profile'].get('fitness_level', 2)
-    ]
-    
-    # В реальной системе здесь будет вызов модели:
-    # outputs = model(temporal_data, static_data)
-    
-    # Фиктивные результаты для демонстрации
-    outputs = {
-        'current_load': 72.5,
-        'fatigue_level': 'medium',
-        'recovery_state': 85,
-        'training_effectiveness': 'optimal',
-        'time_to_exhaustion': '12:30',
-        'recommendations': [
-            {
-                'priority': 1, 
-                'text': 'Снизьте темп на 10% — вы в зоне перенагрузки'
-            },
-            {
-                'priority': 2, 
-                'text': 'Поддерживайте текущий ритм — анаэробный порог достигнут'
-            }
-        ]
-    }
-    
+    # В реальной системе здесь будет логика обновления данных
     return jsonify({
-        'timestamp': timestamp,
-        'current_load': outputs['current_load'],
-        'fatigue_level': outputs['fatigue_level'],
-        'recovery_state': outputs['recovery_state'],
-        'training_effectiveness': outputs['training_effectiveness'],
-        'time_to_exhaustion': outputs['time_to_exhaustion'],
-        'recommendations': outputs['recommendations']
+        'status': 'updated',
+        'session_id': data.get('session_id'),
+        'timestamp': datetime.utcnow().isoformat()
     }), 200
 
-@app.route('/v1/workout/end', methods=['POST'])
-@jwt_required()
-def end_workout():
-    """Завершение сессии тренировки"""
+@app.route('/api/v1/workout/end', methods=['POST'])
+@token_required
+def end_workout_session():
+    """Завершение тренировочной сессии"""
     data = request.get_json()
     
-    session_id = data.get('session_id')
-    
-    if not session_id:
-        return jsonify({'error': 'session_id is required'}), 400
-    
-    # Проверяем существование сессии
-    session_data = session_manager.get_session(session_id)
-    if not session_data:
-        return jsonify({'error': 'Session not found'}), 404
-    
-    # Обновляем статус сессии
-    session_data['status'] = 'completed'
-    session_data['end_time'] = datetime.utcnow().isoformat()
-    session_manager.update_session(session_id, session_data)
-    
-    # Фиктивные финальные метрики для демонстрации
+    # В реальной системе здесь будет логика завершения тренировки
     final_metrics = {
-        'duration_minutes': 30.5,
-        'average_load': 65.2,
-        'peak_load': 82.7,
-        'total_distance_km': 5.2,
-        'next_workout_recommendations': [
-            'Отдохните минимум 24 часа перед следующей интенсивной тренировкой',
-            'Следующая тренировка может быть в зоне аэробного порога'
-        ]
+        'distance_km': 5.2,
+        'duration_minutes': 32,
+        'avg_load': 72,
+        'calories_burned': 420
     }
     
     return jsonify({
         'status': 'completed',
-        'session_id': session_id,
+        'session_id': data.get('session_id'),
         'final_metrics': final_metrics,
         'timestamp': datetime.utcnow().isoformat()
     }), 200
 
-@app.route('/v1/nutrition/preferences', methods=['POST'])
-@jwt_required()
+@app.route('/api/v1/nutrition/preferences', methods=['POST'])
+@token_required
 def set_nutrition_preferences():
     """Установка предпочтений питания"""
     data = request.get_json()
@@ -215,8 +206,8 @@ def set_nutrition_preferences():
         'timestamp': datetime.utcnow().isoformat()
     }), 200
 
-@app.route('/v1/nutrition/plan', methods=['POST'])
-@jwt_required()
+@app.route('/api/v1/nutrition/plan', methods=['POST'])
+@token_required
 def generate_nutrition_plan():
     """Генерация плана питания"""
     data = request.get_json()

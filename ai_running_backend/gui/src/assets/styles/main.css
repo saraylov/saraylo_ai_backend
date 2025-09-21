@@ -1,5 +1,8 @@
 /* Main CSS file for the application */
 
+/* Import Montserrat font */
+@import url('https://fonts.googleapis.com/css2?family=Montserrat:wght@400;500;700&display=swap');
+
 /* Reset styles */
 * {
   margin: 0;
@@ -9,7 +12,7 @@
 
 /* Base styles */
 body {
-  font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+  font-family: 'Montserrat', 'Roboto', 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
   background: linear-gradient(135deg, #000033, #33001a);
   color: #fff;
   min-height: 100vh;
